@@ -47,10 +47,10 @@ if st.button("번역하기"):
                     {"role": "user", "content": prompt   }
                 ]
             )
-            translated = response.output_text
+
 
             # 결과 출력
-            translated_text =
+            translated_text = response.output_text
 
             st.subheader("번역 결과")
-            st.success( translated    )
+            st.success( translated_text   )
