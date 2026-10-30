@@ -9,7 +9,7 @@ client = OpenAI()
 
 # 페이지 설정
 st.set_page_config(page_title ="Text To Speech"    )
-st.title(  "텍스트를 음성으"   )
+st.title(  "텍스트를 음성으로 변환하기"   )
 
 # 텍스트 입력
 text = st.text_area(
