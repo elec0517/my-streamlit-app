@@ -13,8 +13,8 @@ st.title(  "텍스트를 음성으로 변환하기"   )
 
 # 텍스트 입력
 text = st.text_area(
-    "읽을 텍스트를 입력하세요",
-    "안녕하세요. OpenAI 텍스트 음성 변환 실습입니다."
+    "읽을 텍스트를 입력하세요.",
+    value="안녕하세요. OpenAI 텍스트 음성 변환 실습입니다."
 )
 
 # 버튼
@@ -27,7 +27,7 @@ if st.button(  "음성으로 변환하기"    ):
         speech = client.audio.speech.create(
        model="tts-1",
        voice="nova",
-       input=text.text
+       input=text
         )
         audio_bytes =speech.content
 
