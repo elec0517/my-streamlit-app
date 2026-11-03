@@ -73,7 +73,9 @@ uploaded_file = st.file_uploader(
     type=["txt"]
 )
 
-# 번역 버튼
+
+
+# 전송 버튼
 if st.button("SEND📤"):
 
     if uploaded_file is None:
@@ -97,15 +99,27 @@ if st.button("SEND📤"):
         except Exception as e:
             st.error(f"오류가 발생했어요: {e}")
 
+st.session_state["mail_text"] = response.output_text
+
+if "mail_text" in st.session_state:
+
+    st.text_area(
+        "메일 내용을 직접 수정하세요",
+        key="mail_text",
+        height=350
+    )
+
+
+
         # 요약한 내용을 이메일로 전송
-        with st.spinner("이메일 전송 중..."):
+    with st.spinner("이메일 전송 중..."):
                 result = send_email(
                     to=RECEIVER,
                     subject="회의 요약 및 김 대리 담당 업무",
                     body=send_text
                 )
                     
-        if result["status"] == "success":
+    if result["status"] == "success":
                 st.success("메일 발송 요청이 완료됐어요! 수신함을 확인해주세요.")
-        else:
+    else:
                 st.error(f"메일 전송 실패: {result['error']}")
