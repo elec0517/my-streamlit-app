@@ -114,7 +114,7 @@ if st.button("SEND📤"):
                 result = send_email(
                     to=RECEIVER,
                     subject="회의 요약 및 김 대리 담당 업무",
-                    body=meeting_text
+                    body=mail_text
                 )
                     
     if result["status"] == "success":
