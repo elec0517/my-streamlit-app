@@ -6,7 +6,8 @@ from email.mime.text import MIMEText
 import streamlit as st
 from openai import OpenAI
 from email.mime.multipart import MIMEMultipart
-from datetime import datetime, timedelta, timezone
+import json
+from datetime import date, datetime, timedelta, timezone
 
 
 # OpenAI 클라이언트 생성
@@ -155,8 +156,13 @@ if "mail_text" in st.session_state:
         key="mail_text",
         height=350
     )
+meeting_date = st.date_input(
+    "회의 날짜 — 상대 날짜를 계산하는 기준",
+    value=date.today()
+)
 
 if st.button("🔎 김 대리 업무와 마감일 추출"):
+    # 기존 추출 코드는 그대로
 
     if uploaded_file is None:
         st.warning("미팅 파일을 먼저 올려주세요.")
@@ -252,30 +258,35 @@ st.caption(
 if deadline is None:
     st.info("정확한 마감일이 없어요. 필요하면 날짜를 직접 선택해주세요.")
 
-if not body or not task_name.strip() or deadline is None:
-    st.warning("메일 내용, 업무 이름, 마감일을 모두 확인해주세요.")
+if st.button("메일 + 일정 등록📤"):
 
+    # 요약문이 아직 없으면 빈 문자열 사용
+    body = st.session_state.get("mail_text", "").strip()
 
+    if not body:
+        st.warning("먼저 요약하기를 눌러 메일 내용을 만들어주세요.")
 
-if st.button("메일 + 캘린더저장📤"):
+    elif not task_name.strip():
+        st.warning("업무 이름을 입력해주세요.")
 
-  if not st.session_state["mail_text"].strip():
-            st.warning("메일 내용을 입력해주세요.")
+    elif deadline is None:
+        st.warning("마감일을 추출하거나 직접 선택해주세요.")
 
-  elif not task_name.strip():
-            st.warning("업무 이름을 입력해주세요.")
-
-  else:
-            with st.spinner("메일전송과 일정 등록 중..."):
+    else:
+        try:
+            with st.spinner("메일과 일정 초대 전송 중..."):
                 result = send_email(
                     to=RECEIVER,
-                    subject="회의 요약 및 일정 등록",
-                    body=st.session_state["mail_text"],
+                    subject="회의 요약 및 일정 초대",
+                    body=body,
                     task_name=task_name,
                     deadline=deadline
                 )
 
             if result["status"] == "success":
-                st.success("메일과 캘린더 저장이 완료됐어요!")
+                st.success("메일과 일정 초대 발송 요청이 완료됐어요!")
             else:
                 st.error(result["error"])
+
+        except Exception as e:
+            st.error(f"오류가 발생했어요: {e}")
