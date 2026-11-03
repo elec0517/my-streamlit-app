@@ -97,18 +97,15 @@ if st.button("SEND📤"):
         except Exception as e:
             st.error(f"오류가 발생했어요: {e}")
 
-
-
-            with st.spinner("이메일 전송 중..."):
+        # 요약한 내용을 이메일로 전송
+        with st.spinner("이메일 전송 중..."):
                 result = send_email(
                     to=RECEIVER,
                     subject="회의 요약 및 김 대리 담당 업무",
-                    body=body,
-                    
+                    body=send_text
                 )
-
-            # 결과 출력
-            send_text = response.output_text
-
-            st.subheader("전송 완료")
-
+                    
+        if result["status"] == "success":
+                st.success("메일 발송 요청이 완료됐어요! 수신함을 확인해주세요.")
+        else:
+                st.error(f"메일 전송 실패: {result['error']}")
