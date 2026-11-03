@@ -75,39 +75,26 @@ uploaded_file = st.file_uploader(
 
 
 
-# 전송 버튼
-if st.button("SEND📤"):
+if st.button("요약하기📝"):
 
     if uploaded_file is None:
-        st.warning("미팅 파일을 먼저 올려주세요."),
+        st.warning("미팅 파일을 먼저 올려주세요.")
 
     else:
         try:
-            # 업로드한 파일 내용을 글자로 읽기
             meeting_text = uploaded_file.getvalue().decode("utf-8-sig")
 
-            # GPT 호출
             response = client.responses.create(
                 model="gpt-4.1-mini",
                 instructions=sys_role + "\n" + prompt,
                 input=f"[미팅 내용]\n{meeting_text}"
             )
-            # 요약 결과 확인
-            send_text = response.output_text
-            #st.write(send_text)
+
+            # 버튼을 누른 뒤에도 요약 내용이 유지되도록 저장
+            st.session_state["mail_text"] = response.output_text
 
         except Exception as e:
             st.error(f"오류가 발생했어요: {e}")
-
-st.session_state["mail_text"] = response.output_text
-
-if "mail_text" in st.session_state:
-
-    st.text_area(
-        "메일 내용을 직접 수정하세요",
-        key="mail_text",
-        height=350
-    )
 
 
 
