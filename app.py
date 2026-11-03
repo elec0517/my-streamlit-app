@@ -5,6 +5,8 @@ import smtplib
 from email.mime.text import MIMEText
 import streamlit as st
 from openai import OpenAI
+from email.mime.multipart import MIMEMultipart
+from datetime import datetime, timedelta, timezone
 
 
 # OpenAI 클라이언트 생성
@@ -74,7 +76,7 @@ uploaded_file = st.file_uploader(
 )
 
 
-# 1. 요약 버튼
+#  요약 버튼
 if st.button("요약하기📝"):
 
     if uploaded_file is None:
@@ -97,7 +99,7 @@ if st.button("요약하기📝"):
             st.error(f"오류가 발생했어요: {e}")
 
 
-# 2. 요약 내용이 있으면 수정창과 전송 버튼 표시
+# 요약 내용이 있으면 수정창과 전송 버튼 표시
 if "mail_text" in st.session_state:
 
     st.text_area(
@@ -106,21 +108,39 @@ if "mail_text" in st.session_state:
         height=350
     )
 
-    # 3. 수정한 내용을 전송
-    if st.button("SEND📤"):
 
-        if not st.session_state["mail_text"].strip():
+ # 일정 초대에 넣을 내용
+    task_name = st.text_input(
+        "캘린더에 넣을 업무 이름",
+        value="김 대리 업무 마감",
+        max_chars=20
+    )
+
+
+deadline = st.date_input("마감일을 확인해주세요")
+
+st.info(f"받는 사람: {RECEIVER}")
+st.caption("선택한 날짜의 종일 일정으로 초대합니다.")
+
+if st.button("메일 + 일정 초대 보내기📤"):
+
+  if not st.session_state["mail_text"].strip():
             st.warning("메일 내용을 입력해주세요.")
 
-        else:
-            with st.spinner("이메일 전송 중..."):
+  elif not task_name.strip():
+            st.warning("업무 이름을 입력해주세요.")
+
+  else:
+            with st.spinner("메일과 일정 초대 전송 중..."):
                 result = send_email(
                     to=RECEIVER,
-                    subject="회의 요약 및 김 대리 담당 업무",
-                    body=st.session_state["mail_text"]
+                    subject="회의 요약 및 업무 일정 초대",
+                    body=st.session_state["mail_text"],
+                    task_name=task_name,
+                    deadline=deadline
                 )
 
             if result["status"] == "success":
-                st.success("메일 발송 요청이 완료됐어요!")
+                st.success("메일과 일정 초대 발송 요청이 완료됐어요!")
             else:
-                st.error(f"메일 전송 실패: {result['error']}")
+                st.error(result["error"])
