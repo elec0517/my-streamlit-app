@@ -156,9 +156,6 @@ if "mail_text" in st.session_state:
         height=350
     )
 
-
-meeting_date = st.date_input("회의 날짜를 선택하세요")
-
 if st.button("🔎 김 대리 업무와 마감일 추출"):
 
     if uploaded_file is None:
