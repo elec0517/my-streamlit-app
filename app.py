@@ -20,19 +20,67 @@ def send_email(to, subject, body, task_name, deadline):
     sender = os.getenv("GMAIL_ADDRESS")
     password = os.getenv("GMAIL_APP_PASSWORD")
 
-    # 메일 구성 (본문, 제목, 발신자, 수신자)
-    msg = MIMEText(body)
+    # 본문과 일정 첨부파일을 담을 메일
+    msg = MIMEMultipart("mixed")
     msg["Subject"] = subject
     msg["From"] = sender
     msg["To"] = to
 
-    # 메일 보내기 (with 구문: 오류가 나도 연결이 닫힘)
+    # 1. 메일 본문 추가
+    msg.attach(MIMEText(body, "plain", "utf-8"))
+
+    # 2. 일정 제목 정리
+    title = (
+        task_name.replace("\\", "\\\\")
+        .replace("\n", "\\n")
+        .replace("\r", "")
+        .replace(",", "\\,")
+        .replace(";", "\\;")
+    )
+
+    # 종일 일정의 종료일은 다음 날
+    end_date = deadline + timedelta(days=1)
+
+    # 3. 선택한 마감일로 일정 초대 만들기
+    calendar = "\r\n".join([
+        "BEGIN:VCALENDAR",
+        "VERSION:2.0",
+        "PRODID:-//AIVLE//Meeting Assistant//KO",
+        "METHOD:REQUEST",
+        "BEGIN:VEVENT",
+        f"UID:{os.urandom(16).hex()}@aivle.local",
+        f"DTSTAMP:{datetime.now(timezone.utc):%Y%m%dT%H%M%SZ}",
+        f"DTSTART;VALUE=DATE:{deadline:%Y%m%d}",
+        f"DTEND;VALUE=DATE:{end_date:%Y%m%d}",
+        f"SUMMARY:{title}",
+        f"ORGANIZER:mailto:{sender}",
+        f"ATTENDEE;RSVP=TRUE;PARTSTAT=NEEDS-ACTION:mailto:{to}",
+        "SEQUENCE:0",
+        "STATUS:CONFIRMED",
+        "END:VEVENT",
+        "END:VCALENDAR",
+        ""
+    ])
+
+    # 4. 일정 초대를 메일에 첨부
+    invite = MIMEText(calendar, "calendar", "utf-8")
+    invite.set_param("method", "REQUEST")
+    invite.add_header(
+        "Content-Disposition",
+        "attachment",
+        filename="schedule.ics"
+    )
+    msg.attach(invite)
+
+    # 5. 메일 보내기
     try:
-        with smtplib.SMTP("smtp.gmail.com", 587) as s:
+        with smtplib.SMTP("smtp.gmail.com", 587, timeout=30) as s:
             s.starttls()
             s.login(sender, password)
-            s.sendmail(sender, to, msg.as_string())
+            s.sendmail(sender, [to], msg.as_string())
+
         return {"status": "success"}
+
     except Exception as e:
         return {"status": "failed", "error": str(e)}
 
