@@ -8,6 +8,8 @@ from openai import OpenAI
 from email.mime.multipart import MIMEMultipart
 import json
 from datetime import date, datetime, timedelta, timezone
+from google.oauth2 import service_account
+from googleapiclient.discovery import build
 
 
 # OpenAI 클라이언트 생성
@@ -26,6 +28,43 @@ def send_email(to, subject, body, task_name, deadline):
     msg["Subject"] = subject
     msg["From"] = sender
     msg["To"] = to
+
+# 구글 캘린더에 일정 저장
+def save_calendar(task_name, deadline, body):
+
+    # Secrets에 저장한 정보로 구글 인증
+    credentials = service_account.Credentials.from_service_account_info(
+        dict(st.secrets["gcp_service_account"]),
+        scopes=["https://www.googleapis.com/auth/calendar.events"]
+    )
+
+    # 구글 캘린더 연결
+    calendar = build(
+        "calendar",
+        "v3",
+        credentials=credentials,
+        cache_discovery=False
+    )
+
+    # 등록할 일정 내용
+    event = {
+        "summary": task_name,
+        "description": body,
+        "start": {
+            "date": deadline.isoformat()
+        },
+        "end": {
+            "date": (deadline + timedelta(days=1)).isoformat()
+        }
+    }
+
+    # 선택한 캘린더에 실제 저장
+    result = calendar.events().insert(
+        calendarId=st.secrets["calendar"]["id"],
+        body=event
+    ).execute()
+
+    return result["htmlLink"]
 
     # 1. 메일 본문 추가
     msg.attach(MIMEText(body, "plain", "utf-8"))
@@ -290,3 +329,31 @@ if st.button("메일 + 일정 등록📤"):
 
         except Exception as e:
             st.error(f"오류가 발생했어요: {e}")
+            
+            
+            # 캘린더 직접 저장 버튼
+if st.button("📅 구글 캘린더에 저장"):
+
+    if not task_name.strip():
+        st.warning("업무를 먼저 추출하거나 입력해주세요.")
+
+    elif deadline is None:
+        st.warning("마감일을 먼저 추출하거나 선택해주세요.")
+
+    else:
+        try:
+            with st.spinner("캘린더에 저장 중..."):
+                calendar_link = save_calendar(
+                    task_name=task_name,
+                    deadline=deadline,
+                    body=st.session_state.get("mail_text", "")
+                )
+
+            st.success("구글 캘린더에 저장됐어요!")
+            st.link_button("등록한 일정 보기", calendar_link)
+
+        except Exception:
+            st.error(
+                "캘린더 저장을 확인하지 못했어요. "
+                "앱 로그에서 오류를 확인해주세요."
+            )
