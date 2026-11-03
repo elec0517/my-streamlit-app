@@ -74,6 +74,29 @@ uploaded_file = st.file_uploader(
 )
 
 
+# 1. 요약 버튼
+if st.button("요약하기📝"):
+
+    if uploaded_file is None:
+        st.warning("미팅 파일을 먼저 올려주세요.")
+
+    else:
+        try:
+            meeting_text = uploaded_file.getvalue().decode("utf-8-sig")
+
+            response = client.responses.create(
+                model="gpt-4.1-mini",
+                instructions=sys_role + "\n" + prompt,
+                input=f"[미팅 내용]\n{meeting_text}"
+            )
+
+            # 버튼을 누른 뒤에도 요약 내용이 유지되도록 저장
+            st.session_state["mail_text"] = response.output_text
+
+        except Exception as e:
+            st.error(f"오류가 발생했어요: {e}")
+
+
 # 2. 요약 내용이 있으면 수정창과 전송 버튼 표시
 if "mail_text" in st.session_state:
 
@@ -83,41 +106,21 @@ if "mail_text" in st.session_state:
         height=350
     )
 
-# 전송 버튼
-if st.button("SEND📤"):
+    # 3. 수정한 내용을 전송
+    if st.button("SEND📤"):
 
-    if uploaded_file is None:
-        st.warning("미팅 파일을 먼저 올려주세요."),
+        if not st.session_state["mail_text"].strip():
+            st.warning("메일 내용을 입력해주세요.")
 
-    else:
-        try:
-            # 업로드한 파일 내용을 글자로 읽기
-            meeting_text = uploaded_file.getvalue().decode("utf-8-sig")
-
-            # GPT 호출
-            response = client.responses.create(
-                model="gpt-4.1-mini",
-                instructions=sys_role + "\n" + prompt,
-                input=f"[미팅 내용]\n{meeting_text}"
-            )
-            # 요약 결과 확인
-            send_text = response.output_text
-            #st.write(send_text)
-
-        except Exception as e:
-            st.error(f"오류가 발생했어요: {e}")
-
-
-
-        # 요약한 내용을 이메일로 전송
-    with st.spinner("이메일 전송 중..."):
+        else:
+            with st.spinner("이메일 전송 중..."):
                 result = send_email(
                     to=RECEIVER,
                     subject="회의 요약 및 김 대리 담당 업무",
-                    body=mail_text
+                    body=st.session_state["mail_text"]
                 )
-                    
-    if result["status"] == "success":
-                st.success("메일 발송 요청이 완료됐어요! 수신함을 확인해주세요.")
-    else:
+
+            if result["status"] == "success":
+                st.success("메일 발송 요청이 완료됐어요!")
+            else:
                 st.error(f"메일 전송 실패: {result['error']}")
