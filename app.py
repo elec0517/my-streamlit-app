@@ -16,7 +16,7 @@ client = OpenAI()
 RECEIVER = "chicvoice@gmail.com"
 
 # 함수 만들기
-def send_email(to, subject, body):
+def send_email(to, subject, body, task_name, deadline):
     sender = os.getenv("GMAIL_ADDRESS")
     password = os.getenv("GMAIL_APP_PASSWORD")
 
