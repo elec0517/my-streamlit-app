@@ -67,7 +67,7 @@ st.title("에이블 회의 비서👩‍💻")
 st.write("파일을 업로드하고, 요약한 뒤 이메일로 보내세요.")
 st.info("받는 사람: 나")
 
-# 1. 미팅 파일 업로드
+# 미팅 파일 업로드
 uploaded_file = st.file_uploader(
     "미팅 파일 업로드 (.txt / UTF-8)",
     type=["txt"]
@@ -92,7 +92,7 @@ if st.button("SEND📤"):
             )
             # 요약 결과 확인
             send_text = response.output_text
-            st.write(send_text)
+            #st.write(send_text)
 
         except Exception as e:
             st.error(f"오류가 발생했어요: {e}")
