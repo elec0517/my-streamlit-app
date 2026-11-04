@@ -223,7 +223,9 @@ if submit:
                             f"이메일 전송 실패: {result['error']}"
                         )
 
-
+            # 2. 일정 등록은 두 번째 셀의 코드에서 처리
+            elif calendar_by_voice:
+                st.info("일정 등록 요청을 확인했어요.")
             # 3. 이메일·일정 명령이 아니면 요약 또는 질문 처리
             else:
                 meeting_text = (
