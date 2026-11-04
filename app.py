@@ -374,15 +374,30 @@ deadline은 null로 두세요. 추측하지 마세요.
                             else None
                         )
 
+                        # AI가 반환한 업무명 확인
+                        task_name = str(
+                            data.get("task") or ""
+                        ).strip()
+
                         # 이메일·일정 등록에 사용할 값 저장
                         st.session_state["mail_text"] = summary
-                        st.session_state["task_name"] = (
-                            data["task"].strip()
-                        )
+                        st.session_state["task_name"] = task_name
                         st.session_state["deadline"] = deadline
                         st.session_state["deadline_evidence"] = (
-                            data["evidence"]
+                            data.get("evidence", "")
                         )
+
+                        st.write("AI가 추출한 업무명:", repr(task_name))
+                        st.write(
+                            "저장 직후 업무명:",
+                            repr(st.session_state["task_name"]),
+                        )
+
+                        if not task_name:
+                            st.warning(
+                                "요약문은 생성됐지만, AI가 별도 task 항목을 "
+                                "비워서 반환했어요."
+                            )
 
                         # 대화 기록 저장
                         remember(spoken, summary)
