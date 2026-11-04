@@ -345,3 +345,51 @@ if "mail_text" in st.session_state:
         key="mail_text",
         height=300,
     )
+
+RECEIVER = "chicvoice@gmail.com"
+
+def send_email(to, subject, body):
+    sender = os.getenv("GMAIL_ADDRESS")
+    password = os.getenv("GMAIL_APP_PASSWORD")
+
+    # 메일 구성 (본문, 제목, 발신자, 수신자)
+    msg = MIMEText(body)
+    msg["Subject"] = subject
+    msg["From"] = sender
+    msg["To"] = to
+
+    # 메일 보내기 (with 구문: 오류가 나도 연결이 닫힘)
+    try:
+        with smtplib.SMTP("smtp.gmail.com", 587) as s:
+            s.starttls()
+            s.login(sender, password)
+            s.sendmail(sender, to, msg.as_string())
+        return {"status": "success"}
+    except Exception as e:
+        return {"status": "failed", "error": str(e)}
+
+if send_by_voice:
+    body = st.session_state.get("mail_text", "").strip()
+
+    if not body:
+        st.warning("먼저 회의록을 요약해주세요.")
+
+    else:
+        try:
+            with st.spinner("이메일 전송 중..."):
+                result = send_email(
+                    to=RECEIVER,
+                    subject="회의 요약",
+                    body=body,
+                )
+
+            if result["status"] == "success":
+                st.success("이메일 발송 요청이 완료됐어요!")
+            else:
+                st.error(result["error"])
+
+        except Exception as e:
+            st.error(f"이메일 전송 중 오류가 발생했어요: {e}")
+
+    st.info(reply)
+    remember(spoken, reply)
