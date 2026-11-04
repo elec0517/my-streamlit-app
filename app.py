@@ -77,7 +77,7 @@ def save_calendar(task_name, deadline, body):
 
 # 페이지 설정
 st.set_page_config(page_title="비서 에이블", page_icon="👩‍💻", layout="wide")
-st.title("음성 인식 AI 서비스")
+st.title("음성 인식 AI 비서 서비스👩‍💻")
 st.write("음성으로 질문하시면 답변해 드립니다.")
 
 # 역할 지정
@@ -137,9 +137,25 @@ if submit:
     transcript = client.audio.transcriptions.create(
         model="whisper-1",
         file=("audio.wav", audio_value, "audio/wav"))
+    
+    #요약이나 정리가 들어가면 ~ 
+    command = transcript.text
+    send_summary = "요약" in command or "정리" in command
+    
+    if send_summary and not text.strip():
+      st.warning("요약해서 보낼 회의록 파일을 먼저 올려주세요.")
+      st.stop()
 
     # 사용자 메시지
-    input_messages.append({"role": "user", "content": transcript.text})
+    if send_summary:
+        user_request = (
+            "첨부한 회의록을 요약하고 김 대리의 업무와 기한을 정리해주세요. "
+            "답변은 이메일 본문으로 사용할 수 있게 일반 텍스트로 작성해주세요."
+        )
+    else:
+        user_request = transcript.text
+
+    input_messages.append({"role": "user", "content": user_request})
 
     # LLM 호출 및 응답 듣기
     with st.spinner("답변을 준비하고 있습니다..."):
@@ -155,3 +171,19 @@ if submit:
         # 응답 출력
         st.subheader("AI 답변")
         st.write(answer)
+
+        #이메일보내기
+        if send_summary:
+            if response.status != "completed" or not answer.strip():
+                st.error("요약이 완료되지 않았어요. 다시 실행해주세요.")
+            else:
+                result = send_email(
+                    to=RECEIVER,
+                    subject="회의 요약 및 김 대리 담당 업무",
+                    body=answer
+                )
+
+                if result["status"] == "success":
+                    st.success(f"{RECEIVER}로 요약 메일을 보냈어요.")
+                else:
+                    st.error(f"메일 전송에 실패했어요. {result['error']}")
