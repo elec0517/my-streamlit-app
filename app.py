@@ -213,6 +213,12 @@ deadline은 null로 두세요. 추측하지 마세요.
                         st.subheader("AI 답변")
                         st.write(answer)
                         remember(spoken, answer)
+        except Exception as e:
+            st.error(
+                f"음성 처리 또는 답변 생성 중 오류가 발생했어요. "
+                f"({type(e).__name__})"
+            )
+
 
 if "mail_text" in st.session_state:
     st.subheader("회의 요약")
