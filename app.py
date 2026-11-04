@@ -317,3 +317,136 @@ if "mail_text" in st.session_state:
         key="mail_text",
         height=300,
     )
+
+RECEIVER = "chicvoice@gmail.com"
+
+# 1번 셀에서 '이메일 보내줘'라고 인식했을 때 실행
+if send_by_voice:
+    body = st.session_state.get("mail_text", "").strip()
+    sender = os.getenv("GMAIL_ADDRESS")
+    password = os.getenv("GMAIL_APP_PASSWORD")
+
+    if not body:
+        reply = "먼저 회의록을 요약해달라고 말씀해주세요."
+
+    elif not sender or not password:
+        reply = "Gmail 주소와 앱 비밀번호 설정을 확인해주세요."
+
+    else:
+        try:
+            msg = MIMEText(body, "plain", "utf-8")
+            msg["Subject"] = "회의 요약 및 김 대리 담당 업무"
+            msg["From"] = sender
+            msg["To"] = RECEIVER
+
+            with st.spinner("이메일을 보내고 있어요..."):
+                with smtplib.SMTP("smtp.gmail.com", 587, timeout=30) as server:
+                    server.starttls()
+                    server.login(sender, password)
+                    server.send_message(msg)
+
+            reply = f"{RECEIVER}로 요약 메일을 보냈어요."
+
+        except smtplib.SMTPAuthenticationError:
+            reply = "Gmail 로그인에 실패했어요. 앱 비밀번호를 확인해주세요."
+
+        except Exception as e:
+            reply = (
+                f"메일 전송 결과를 확인하지 못했어요. ({type(e).__name__}) "
+                "다시 요청하기 전에 수신함을 확인해주세요."
+            )
+
+    st.info(reply)
+    remember(spoken, reply)
+
+from hashlib import sha256
+
+st.subheader("📅 등록할 일정")
+
+task_name = st.text_input("업무 이름 확인·수정", key="task_name")
+deadline = st.date_input(
+    "마감일 확인·수정",
+    value=None,
+    key="deadline"
+)
+
+st.caption(st.session_state.get("deadline_evidence", ""))
+
+# 1번 셀에서 '일정 등록해줘'라고 인식했을 때 실행
+if calendar_by_voice:
+
+    if not task_name.strip() or deadline is None:
+        reply = (
+            "업무 이름이나 정확한 마감일이 없어요. "
+            "먼저 요약하거나 화면에서 내용을 입력해주세요."
+        )
+
+    else:
+        try:
+            from google.oauth2 import service_account
+            from googleapiclient.discovery import build
+            from googleapiclient.errors import HttpError
+
+            credentials = service_account.Credentials.from_service_account_info(
+                dict(st.secrets["gcp_service_account"]),
+                scopes=["https://www.googleapis.com/auth/calendar.events"]
+            )
+
+            calendar = build(
+                "calendar",
+                "v3",
+                credentials=credentials,
+                cache_discovery=False
+            )
+
+            calendar_id = st.secrets["calendar"]["id"]
+
+            # 동일 업무·날짜로 다시 요청해도 중복 등록 방지
+            event_id = sha256(
+                f"{task_name.strip()}|{deadline.isoformat()}".encode("utf-8")
+            ).hexdigest()
+
+            event = {
+                "id": event_id,
+                "summary": task_name.strip(),
+                "description": st.session_state.get("mail_text", ""),
+                "start": {"date": deadline.isoformat()},
+                "end": {
+                    "date": (deadline + timedelta(days=1)).isoformat()
+                }
+            }
+
+            with st.spinner("구글 캘린더에 저장하고 있어요..."):
+                try:
+                    saved = calendar.events().insert(
+                        calendarId=calendar_id,
+                        body=event
+                    ).execute()
+
+                    reply = f"{deadline}에 '{task_name}' 일정을 등록했어요."
+
+                except HttpError as e:
+                    if e.resp.status != 409:
+                        raise
+
+                    saved = calendar.events().get(
+                        calendarId=calendar_id,
+                        eventId=event_id
+                    ).execute()
+
+                    reply = "같은 업무와 날짜로 이미 등록된 일정이 있어요."
+
+            st.markdown(f"[📅 등록한 일정 보기]({saved['htmlLink']})")
+
+        except Exception as e:
+            reply = f"캘린더 등록 결과를 확인하지 못했어요. ({type(e).__name__})"
+
+    st.info(reply)
+    remember(spoken, reply)
+
+
+# 요약·이메일·일정 등록을 포함한 최근 10턴 표시
+with st.expander("최근 대화 기록 · 최대 10턴"):
+    for question, answer in st.session_state["history"]:
+        st.chat_message("user").write(question)
+        st.chat_message("assistant").write(answer)
