@@ -444,7 +444,7 @@ if calendar_by_voice:
                 cache_discovery=False,
             )
 
-            calendar_id = st.secrets["calendar"]["id"]
+            calendar_id = st.secrets["calendar"]["857d05b077b9c613620df43af437b19ea7fdbff1296e196a733b9b0c9c07e78c@group.calendar.google.com"]
 
             # 동일 업무·날짜의 중복 등록 방지
             event_id = sha256(
