@@ -379,18 +379,21 @@ deadline은 null로 두세요. 추측하지 마세요.
                             data.get("task") or ""
                         ).strip()
 
-                        # 이메일·일정 등록에 사용할 값 저장
+                        # 이메일 본문 저장
                         st.session_state["mail_text"] = summary
-                        st.session_state["task_name"] = task_name
-                        st.session_state["deadline"] = deadline
-                        st.session_state["deadline_evidence"] = (
-                            data.get("evidence", "")
-                        )
 
-                        st.write("AI가 추출한 업무명:", repr(task_name))
+                        # 입력창 key와 별개인 전용 저장 공간 사용
+                        st.session_state["calendar_payload"] = {
+                            "task": str(data.get("task") or "").strip(),
+                            "deadline": deadline,
+                            "evidence": str(
+                                data.get("evidence") or ""
+                            ),
+                        }
+
                         st.write(
-                            "저장 직후 업무명:",
-                            repr(st.session_state["task_name"]),
+                            "추출한 일정 정보:",
+                            st.session_state["calendar_payload"],
                         )
 
                         if not task_name:
@@ -431,17 +434,15 @@ from datetime import date, timedelta
 
 # 음성 명령이 인식됐을 때만 실제 등록 실행
 if calendar_by_voice:
-    # 회의록 요약 단계에서 저장한 정보를 자동으로 가져오기
-    task_name = str(
-        st.session_state.get("task_name") or ""
-    ).strip()
+    # 요약 단계에서 저장한 일정 정보 가져오기
+    payload = st.session_state.get("calendar_payload", {})
 
-    deadline = st.session_state.get("deadline")
+    task_name = str(payload.get("task") or "").strip()
+    deadline = payload.get("deadline")
+    evidence = payload.get("evidence", "")
     summary = st.session_state.get("mail_text", "")
-    evidence = st.session_state.get("deadline_evidence", "")
 
-    st.write("실제 저장된 업무명:", repr(task_name))
-    st.write("실제 저장된 마감일:", deadline)
+    st.write("등록할 일정 정보:", payload)
 
     if not task_name:
         reply = (
