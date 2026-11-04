@@ -382,3 +382,169 @@ if "mail_text" in st.session_state:
         key="mail_text",
         height=300,
     )
+
+from hashlib import sha256
+
+st.subheader("📅 등록할 일정")
+
+task_name = st.text_input(
+    "업무 이름 확인·수정",
+    key="task_name",
+)
+
+deadline = st.date_input(
+    "마감일 확인·수정",
+    value=None,
+    key="deadline",
+)
+
+st.caption(
+    st.session_state.get("deadline_evidence", "")
+)
+
+# 음성으로 일정 등록을 요청했을 때 실행
+if calendar_by_voice:
+    if not task_name.strip() or deadline is None:
+        reply = (
+            "업무 이름이나 정확한 마감일이 없어요. "
+            "먼저 요약하거나 화면에서 내용을 입력해주세요."
+        )
+        st.warning(reply)
+
+    else:
+        try:
+            from google.oauth2 import service_account
+            from googleapiclient.discovery import build
+            from googleapiclient.errors import HttpError
+
+            credentials = (
+                service_account.Credentials.from_service_account_info(
+                    dict(st.secrets["gcp_service_account"]),
+                    scopes=[
+                        "https://www.googleapis.com/auth/calendar.events"
+                    ],
+                )
+            )
+
+            calendar_service = build(
+                "calendar",
+                "v3",
+                credentials=credentials,
+                cache_discovery=False,
+            )
+
+            calendar_id = st.secrets["calendar"]["id"]
+
+            # 같은 업무·날짜의 중복 등록 방지
+            event_id = sha256(
+                (
+                    f"{task_name.strip()}|"
+                    f"{deadline.isoformat()}"
+                ).encode("utf-8")
+            ).hexdigest()
+
+            event = {
+                "id": event_id,
+                "summary": task_name.strip(),
+                "description": st.session_state.get("mail_text", ""),
+                "start": {
+                    "date": deadline.isoformat(),
+                },
+                "end": {
+                    "date": (
+                        deadline + timedelta(days=1)
+                    ).isoformat(),
+                },
+            }
+
+            with st.spinner("구글 캘린더에 저장하고 있어요..."):
+                try:
+                    saved = (
+                        calendar_service.events()
+                        .insert(
+                            calendarId=calendar_id,
+                            body=event,
+                        )
+                        .execute()
+                    )
+
+                    reply = (
+                        f"{deadline}에 "
+                        f"'{task_name.strip()}' 일정을 등록했어요."
+                    )
+
+                except HttpError as e:
+                    if e.resp.status != 409:
+                        raise
+
+                    saved = (
+                        calendar_service.events()
+                        .get(
+                            calendarId=calendar_id,
+                            eventId=event_id,
+                        )
+                        .execute()
+                    )
+
+                    reply = (
+                        "같은 업무와 날짜로 이미 등록된 일정이 있어요."
+                    )
+
+            st.success(reply)
+
+            if saved.get("htmlLink"):
+                st.link_button(
+                    "📅 등록한 일정 보기",
+                    saved["htmlLink"],
+                )
+
+        except KeyError as e:
+            reply = f"캘린더 설정에 필요한 항목이 없어요: {e}"
+            st.error(reply)
+
+        except ImportError as e:
+            reply = f"캘린더 라이브러리를 불러오지 못했어요: {e}"
+            st.error(reply)
+
+        except HttpError as e:
+            status = e.resp.status
+
+            if status == 403:
+                reply = (
+                    "구글 캘린더 접근이 거부됐어요. "
+                    "Calendar API 활성화 여부와 서비스 계정의 "
+                    "일정 변경 권한을 확인해주세요. "
+                    "(HTTP 403)"
+                )
+
+            elif status == 404:
+                reply = (
+                    "등록할 캘린더를 찾지 못했어요. "
+                    "캘린더 ID와 서비스 계정에 대한 "
+                    "캘린더 공유 설정을 확인해주세요. "
+                    "(HTTP 404)"
+                )
+
+            else:
+                reply = (
+                    f"구글 캘린더 요청에 실패했어요. "
+                    f"(HTTP {status})"
+                )
+
+            st.error(reply)
+
+        except Exception as e:
+            reply = (
+                "캘린더 등록 중 오류가 발생했어요. "
+                f"({type(e).__name__})"
+            )
+            st.error(reply)
+
+    remember(spoken, reply)
+
+
+# 최근 대화 기록 표시
+with st.expander("최근 대화 기록 · 최대 10턴"):
+    for question, answer in st.session_state["history"]:
+        st.chat_message("user").write(question)
+        st.chat_message("assistant").write(answer)
