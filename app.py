@@ -165,12 +165,27 @@ if submit:
             st.write("이메일 전송 명령 여부:", send_by_voice)
 
             # 캘린더 등록 명령 확인
-            calendar_by_voice = command in {
-                "일정등록해줘",
-                "일정등록해주세요",
-                "캘린더에저장해줘",
-                "구글캘린더에저장해줘",
-            }
+            # 일정 등록 요청 인식
+            calendar_by_voice = (
+                not send_by_voice
+                and any(
+                    word in command
+                    for word in ["일정", "캘린더", "마감"]
+                )
+                and any(
+                    word in command
+                    for word in [
+                        "등록", "저장", "추가",
+                        "넣어", "넣고", "올려",
+                    ]
+                )
+            )
+
+            st.write("인식된 명령:", command)
+            st.write(
+                "캘린더 등록 명령 여부:",
+                calendar_by_voice,
+            )
 
             # 회의록 요약 명령 확인
             summarize = command in {
