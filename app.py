@@ -259,6 +259,8 @@ if "last_audio" not in st.session_state:
 # 사이드바 메뉴: 누른 메뉴의 기능만 화면에 표시
 with st.sidebar:
     st.header("🤖 에이블 메뉴")
+    if "🍃 오늘의 할 일" not in PAGES:
+        PAGES.append("🍃 오늘의 할 일")
     page = st.radio("기능 선택", PAGES, label_visibility="collapsed")
     st.divider()
 
@@ -458,3 +460,132 @@ with st.sidebar:
     else:
         st.warning("회의록 없음 · 'AI 비서' 메뉴에서 업로드")
     st.metric("저장된 대화", f"{len(st.session_state.messages) // 2}건")
+
+
+# === ABLE_TODAY_PAGE ===
+
+if page == "🍃 오늘의 할 일":
+    st.subheader("🍃 오늘의 할 일")
+    today = kst_today()
+    st.caption(f"{today:%Y.%m.%d} · 김 대리님의 업무")
+
+    schedule = st.session_state.get("schedule", [])
+
+    tasks = [
+        (i, item)
+        for i, item in enumerate(schedule)
+        if item.get("kind") == "김 대리 업무"
+    ]
+
+    if not tasks:
+        st.info(
+            "'📅 마감 캘린더' 메뉴에서 "
+            "'회의록에서 일정 추출'을 먼저 눌러주세요."
+        )
+
+    else:
+        def today_group(item):
+            if not item.get("use") or not item.get("due"):
+                return "🗓️ 기한 확인 필요"
+            if item["due"] < today:
+                return "⚠️ 기한 경과"
+            if item["due"] == today:
+                return "🔥 오늘 마감"
+            return "📋 앞으로 할 일"
+
+        def save_today_done(index, key):
+            st.session_state.schedule[index]["done"] = (
+                st.session_state[key]
+            )
+            # 캘린더의 완료 입력창도 새 상태로 갱신
+            st.session_state.sched_ver += 1
+
+        pending = [
+            (i, item) for i, item in tasks
+            if not item.get("done", False)
+        ]
+
+        done = [
+            (i, item) for i, item in tasks
+            if item.get("done", False)
+        ]
+
+        c1, c2, c3 = st.columns(3)
+        c1.metric("남은 업무", len(pending))
+        c2.metric(
+            "오늘 마감",
+            sum(
+                today_group(item) == "🔥 오늘 마감"
+                for _, item in pending
+            ),
+        )
+        c3.metric("완료", len(done))
+
+        version = st.session_state.get("sched_ver", 0)
+
+        for group in [
+            "⚠️ 기한 경과",
+            "🔥 오늘 마감",
+            "📋 앞으로 할 일",
+            "🗓️ 기한 확인 필요",
+        ]:
+            items = [
+                (i, item) for i, item in pending
+                if today_group(item) == group
+            ]
+
+            if not items:
+                continue
+
+            st.markdown(f"#### {group}")
+
+            items.sort(
+                key=lambda pair: (
+                    pair[1]["due"]
+                    if pair[1].get("use") and pair[1].get("due")
+                    else date.max
+                )
+            )
+
+            for i, item in items:
+                key = f"today_page_{version}_{i}"
+
+                with st.container(border=True):
+                    st.checkbox(
+                        item["name"],
+                        value=False,
+                        key=key,
+                        on_change=save_today_done,
+                        args=(i, key),
+                    )
+
+                    if item.get("use") and item.get("due"):
+                        st.caption(
+                            f"마감일: {item['due']:%Y.%m.%d}"
+                        )
+                    else:
+                        st.caption("정확한 마감일을 확인해주세요.")
+
+                    if item.get("expr"):
+                        st.caption(
+                            f"회의록 표현: {item['expr']}"
+                        )
+
+        if not pending:
+            st.success("모든 담당 업무를 완료했어요! 🎉")
+
+        with st.expander(f"✅ 완료한 업무 {len(done)}건"):
+            for i, item in done:
+                key = f"today_page_done_{version}_{i}"
+
+                st.checkbox(
+                    item["name"],
+                    value=True,
+                    key=key,
+                    on_change=save_today_done,
+                    args=(i, key),
+                )
+
+            st.caption(
+                "체크를 해제하면 미완료 목록으로 돌아가요."
+            )
