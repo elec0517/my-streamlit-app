@@ -208,8 +208,9 @@ if submit:
                             f"이메일 전송 실패: {result['error']}"
                         )
 
-            elif not calendar_by_voice:
-                # 업로드한 회의록 읽기
+
+            # 3. 이메일·일정 명령이 아니면 요약 또는 질문 처리
+            else:
                 meeting_text = (
                     uploaded_file.getvalue()
                     .decode("utf-8-sig")
@@ -219,11 +220,10 @@ if submit:
                 )
 
                 if summarize and not meeting_text:
-                    st.warning(
-                        "요약할 회의록 파일을 먼저 올려주세요."
-                    )
+                    st.warning("요약할 회의록 파일을 먼저 올려주세요.")
 
                 else:
+
                     # 역할 설정
                     input_messages = [
                         {
