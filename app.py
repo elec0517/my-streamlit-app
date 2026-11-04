@@ -1067,16 +1067,37 @@ if page == "🍃 오늘의 할 일":
                     )
 
                     if item.get("use") and item.get("due"):
-                        st.caption(
-                            f"마감일: {item['due']:%Y.%m.%d}"
-                        )
-                    else:
-                        st.caption("정확한 마감일을 확인해주세요.")
+                        due = item["due"]
 
-                    if item.get("expr"):
+                        if isinstance(due, str):
+                            due = date.fromisoformat(due)
+
+                        days_left = (due - today).days
+
+                        if days_left < 0:
+                            label = f"{-days_left}일 경과"
+                        elif days_left == 0:
+                            label = "오늘 마감"
+                        else:
+                            label = f"D-{days_left}"
+
                         st.caption(
-                            f"회의록 표현: {item['expr']}"
+                            f"📅 마감일: {due:%Y.%m.%d} · {label}"
                         )
+
+                        if item.get("expr"):
+                            st.caption(
+                                f"회의록 표현: {item['expr']}"
+                            )
+
+                    elif item.get("expr"):
+                        st.caption(
+                            f"🗓️ 기한: {item['expr']} · "
+                            "정확한 날짜 확인 필요"
+                        )
+
+                    else:
+                        st.caption("🗓️ 기한 미정")
 
         if not pending:
             st.success("모든 담당 업무를 완료했어요! 🎉")
