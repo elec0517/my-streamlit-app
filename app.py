@@ -199,6 +199,7 @@ if submit:
     else:
         try:
             # 음성 인식
+
             transcript = client.audio.transcriptions.create(
                 model="whisper-1",
                 file=(
@@ -206,7 +207,15 @@ if submit:
                     audio_value.getvalue(),
                     "audio/wav",
                 ),
+                language="ko",
+                prompt=(
+                    "한국어 음성입니다. "
+                    "비서 이름은 에이블입니다. "
+                    "회의록 요약, 이메일 전송, 구글 캘린더 일정 등록."
+                ),
             )
+                
+            
 
             spoken = transcript.text.strip()
             st.caption(f"음성 인식 결과 · {spoken}")
