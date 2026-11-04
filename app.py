@@ -425,6 +425,9 @@ if calendar_by_voice:
     summary = st.session_state.get("mail_text", "")
     evidence = st.session_state.get("deadline_evidence", "")
 
+    st.write("실제 저장된 업무명:", repr(task_name))
+    st.write("실제 저장된 마감일:", deadline)
+
     if not task_name:
         reply = (
             "요약에서 김 대리 담당 업무를 찾지 못했어요. "
