@@ -67,6 +67,7 @@ with st.form("task_form"):
 
 # 버튼을 눌렀을 때만 실행
 if submit:
+    st.session_state.pop("mail_text", None)
     # 업로드 된 파일이 있으면 디코딩
     text = ""
     if uploaded_file is not None:
@@ -98,11 +99,18 @@ if submit:
             model="gpt-4o-mini",
             input=input_messages
         )
-        answer = response.output_text
+        answer = response.output_text.strip()
 
-        # 응답 출력
-        st.subheader("AI 답변")
-        st.write(answer)    
+        if response.status != "completed" or not answer:
+            st.error("답변이 완료되지 않았어요. 다시 실행해주세요.")
+        elif text.strip():
+            # 아래 수정창과 이메일 버튼이 함께 사용하는 값
+            st.session_state["mail_text"] = answer
+        else:
+               # 응답 출력
+            st.subheader("AI 답변")
+            st.write(answer)
+
 
 if "mail_text" in st.session_state:
     st.subheader("회의 요약")
