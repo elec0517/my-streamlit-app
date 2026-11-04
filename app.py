@@ -384,30 +384,32 @@ if "mail_text" in st.session_state:
     )
 
 from hashlib import sha256
+from datetime import date, timedelta
 
-st.subheader("📅 등록할 일정")
 
-task_name = st.text_input(
-    "업무 이름 확인·수정",
-    key="task_name",
-)
-
-deadline = st.date_input(
-    "마감일 확인·수정",
-    value=None,
-    key="deadline",
-)
-
-st.caption(
-    st.session_state.get("deadline_evidence", "")
-)
-
-# 음성으로 일정 등록을 요청했을 때 실행
+# 음성 명령이 인식됐을 때만 실제 등록 실행
 if calendar_by_voice:
-    if not task_name.strip() or deadline is None:
+    # 회의록 요약 단계에서 저장한 정보를 자동으로 가져오기
+    task_name = str(
+        st.session_state.get("task_name") or ""
+    ).strip()
+
+    deadline = st.session_state.get("deadline")
+    summary = st.session_state.get("mail_text", "")
+    evidence = st.session_state.get("deadline_evidence", "")
+
+    if not task_name:
         reply = (
-            "업무 이름이나 정확한 마감일이 없어요. "
-            "먼저 요약하거나 화면에서 내용을 입력해주세요."
+            "요약에서 김 대리 담당 업무를 찾지 못했어요. "
+            "먼저 회의록을 요약해주세요."
+        )
+        st.warning(reply)
+
+    elif deadline is None:
+        reply = (
+            f"등록할 업무는 '{task_name}'입니다. "
+            "하지만 정확한 마감일이 없어 등록하지 않았어요. "
+            "회의 날짜와 회의록의 마감일을 확인해주세요."
         )
         st.warning(reply)
 
@@ -416,6 +418,15 @@ if calendar_by_voice:
             from google.oauth2 import service_account
             from googleapiclient.discovery import build
             from googleapiclient.errors import HttpError
+
+            # 날짜가 문자열로 저장된 경우 변환
+            if isinstance(deadline, str):
+                deadline = date.fromisoformat(deadline)
+
+            st.write("등록할 업무:", task_name)
+            st.write("등록할 날짜:", deadline)
+            if evidence:
+                st.caption(f"회의록 근거: {evidence}")
 
             credentials = (
                 service_account.Credentials.from_service_account_info(
@@ -435,18 +446,15 @@ if calendar_by_voice:
 
             calendar_id = st.secrets["calendar"]["id"]
 
-            # 같은 업무·날짜의 중복 등록 방지
+            # 동일 업무·날짜의 중복 등록 방지
             event_id = sha256(
-                (
-                    f"{task_name.strip()}|"
-                    f"{deadline.isoformat()}"
-                ).encode("utf-8")
+                f"{task_name}|{deadline.isoformat()}".encode("utf-8")
             ).hexdigest()
 
             event = {
                 "id": event_id,
-                "summary": task_name.strip(),
-                "description": st.session_state.get("mail_text", ""),
+                "summary": task_name,
+                "description": summary,
                 "start": {
                     "date": deadline.isoformat(),
                 },
@@ -457,7 +465,7 @@ if calendar_by_voice:
                 },
             }
 
-            with st.spinner("구글 캘린더에 저장하고 있어요..."):
+            with st.spinner("구글 캘린더에 실제 등록 중..."):
                 try:
                     saved = (
                         calendar_service.events()
@@ -468,10 +476,7 @@ if calendar_by_voice:
                         .execute()
                     )
 
-                    reply = (
-                        f"{deadline}에 "
-                        f"'{task_name.strip()}' 일정을 등록했어요."
-                    )
+                    already_exists = False
 
                 except HttpError as e:
                     if e.resp.status != 409:
@@ -486,64 +491,54 @@ if calendar_by_voice:
                         .execute()
                     )
 
-                    reply = (
-                        "같은 업무와 날짜로 이미 등록된 일정이 있어요."
+                    already_exists = True
+
+                # 저장된 일정을 다시 조회해 등록 결과 확인
+                confirmed = (
+                    calendar_service.events()
+                    .get(
+                        calendarId=calendar_id,
+                        eventId=saved["id"],
                     )
+                    .execute()
+                )
+
+                if confirmed.get("status") == "cancelled":
+                    raise RuntimeError(
+                        "같은 식별자의 일정이 삭제된 상태입니다."
+                    )
+
+            if already_exists:
+                reply = (
+                    f"'{task_name}' 일정이 {deadline}에 "
+                    "이미 등록되어 있는 것을 확인했어요."
+                )
+            else:
+                reply = (
+                    f"'{task_name}' 일정을 {deadline}에 "
+                    "등록하고 구글 캘린더에서 조회까지 확인했어요."
+                )
 
             st.success(reply)
 
-            if saved.get("htmlLink"):
+            if confirmed.get("htmlLink"):
                 st.link_button(
-                    "📅 등록한 일정 보기",
-                    saved["htmlLink"],
+                    "📅 실제 등록된 일정 확인",
+                    confirmed["htmlLink"],
                 )
-
-        except KeyError as e:
-            reply = f"캘린더 설정에 필요한 항목이 없어요: {e}"
-            st.error(reply)
-
-        except ImportError as e:
-            reply = f"캘린더 라이브러리를 불러오지 못했어요: {e}"
-            st.error(reply)
-
-        except HttpError as e:
-            status = e.resp.status
-
-            if status == 403:
-                reply = (
-                    "구글 캘린더 접근이 거부됐어요. "
-                    "Calendar API 활성화 여부와 서비스 계정의 "
-                    "일정 변경 권한을 확인해주세요. "
-                    "(HTTP 403)"
-                )
-
-            elif status == 404:
-                reply = (
-                    "등록할 캘린더를 찾지 못했어요. "
-                    "캘린더 ID와 서비스 계정에 대한 "
-                    "캘린더 공유 설정을 확인해주세요. "
-                    "(HTTP 404)"
-                )
-
-            else:
-                reply = (
-                    f"구글 캘린더 요청에 실패했어요. "
-                    f"(HTTP {status})"
-                )
-
-            st.error(reply)
 
         except Exception as e:
             reply = (
-                "캘린더 등록 중 오류가 발생했어요. "
+                "캘린더 등록 또는 등록 결과 확인에 실패했어요. "
                 f"({type(e).__name__})"
             )
             st.error(reply)
+            st.exception(e)
 
     remember(spoken, reply)
 
 
-# 최근 대화 기록 표시
+# 최근 대화 기록
 with st.expander("최근 대화 기록 · 최대 10턴"):
     for question, answer in st.session_state["history"]:
         st.chat_message("user").write(question)
