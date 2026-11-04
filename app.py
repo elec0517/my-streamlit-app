@@ -120,13 +120,19 @@ if submit:
                 command = command[len("에이블"):]
 
             # 이메일 전송 명령 확인
-            send_by_voice = command in {
-                "이메일보내줘",
-                "이메일보내주세요",
-                "메일보내줘",
-                "메일전송해줘",
-                "이메일전송해줘",
-            }
+            send_by_voice = any(
+                    phrase in command
+    for phrase in [
+        "이메일보내",
+        "이메일을보내",
+        "메일보내",
+        "메일을보내",
+        "메일전송",
+        "메일을전송",
+        "이메일전송",
+        "이메일을전송",
+    ]
+)
 
             # 캘린더 등록 명령 확인
             calendar_by_voice = command in {
@@ -146,7 +152,33 @@ if submit:
                 "정리해줘",
             }
 
-            if not send_by_voice and not calendar_by_voice:
+            if send_by_voice:
+                mail_text = st.session_state.get("mail_text", "").strip()
+
+                if not mail_text:
+                    st.warning("먼저 회의록을 요약해주세요.")
+
+                else:
+                    # Streamlit Secrets에서 발신자 계정 정보 불러오기
+                    sender = st.secrets["EMAIL_ADDRESS"]
+                    password = st.secrets["EMAIL_APP_PASSWORD"]
+
+                    msg = MIMEText(mail_text, "plain", "utf-8")
+                    msg["Subject"] = "회의 요약 및 김 대리 담당 업무"
+                    msg["From"] = sender
+                    msg["To"] = RECEIVER
+
+                    with st.spinner("이메일을 보내고 있습니다..."):
+                        with smtplib.SMTP_SSL(
+                            "smtp.gmail.com", 465, timeout=30
+                        ) as smtp:
+                            smtp.login(sender, password)
+                            smtp.send_message(msg)
+
+                    st.success(f"{RECEIVER}으로 이메일을 보냈습니다.")
+
+            elif not calendar_by_voice:
+                # 기존 meeting_text = (...)부터 이어서 유지
                 # 업로드한 회의록 읽기
                 meeting_text = (
                     uploaded_file.getvalue()
