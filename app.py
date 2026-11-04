@@ -70,6 +70,32 @@ def remember(request, reply):
     st.session_state["history"] = history[-10:]
 
 
+# 이메일 전송 함수
+def send_email(to, subject, body):
+    sender = os.getenv("GMAIL_ADDRESS")
+    password = os.getenv("GMAIL_APP_PASSWORD")
+
+    # 메일 구성
+    msg = MIMEText(body)
+    msg["Subject"] = subject
+    msg["From"] = sender
+    msg["To"] = to
+
+    try:
+        with smtplib.SMTP("smtp.gmail.com", 587) as s:
+            s.starttls()
+            s.login(sender, password)
+            s.sendmail(sender, to, msg.as_string())
+
+        return {"status": "success"}
+
+    except Exception as e:
+        return {
+            "status": "failed",
+            "error": str(e),
+        }
+
+
 # 입력 영역
 with st.form("task_form"):
     uploaded_file = st.file_uploader(
@@ -91,27 +117,6 @@ send_by_voice = False
 calendar_by_voice = False
 spoken = ""
 
-
-# 함수 만들기
-def send_email(to, subject, body):
-    sender = os.getenv("GMAIL_ADDRESS")
-    password = os.getenv("GMAIL_APP_PASSWORD")
-
-    # 메일 구성 (본문, 제목, 발신자, 수신자)
-    msg = MIMEText(body)
-    msg["Subject"] = subject
-    msg["From"] = sender
-    msg["To"] = to
-
-    # 메일 보내기 (with 구문: 오류가 나도 연결이 닫힘)
-    try:
-        with smtplib.SMTP("smtp.gmail.com", 587) as s:
-            s.starttls()
-            s.login(sender, password)
-            s.sendmail(sender, to, msg.as_string())
-        return {"status": "success"}
-    except Exception as e:
-        return {"status": "failed", "error": str(e)}
 
 # 실행 버튼을 눌렀을 때만 처리
 if submit:
@@ -140,14 +145,13 @@ if submit:
             if command.startswith("에이블"):
                 command = command[len("에이블"):]
 
-            # 이메일 전송 명령 확인
-# 이메일/메일과 보내기/전송 표현이 함께 있으면 전송 명령
+            # 이메일/메일과 보내기/전송 표현이 함께 있으면 전송 명령
             send_by_voice = (
-    ("메일" in command)
-    and ("보내" in command or "전송" in command)
-)
+                "메일" in command
+                and ("보내" in command or "전송" in command)
+            )
 
-# 확인용 표시
+            # 확인용 표시
             st.write("인식된 명령:", command)
             st.write("이메일 전송 명령 여부:", send_by_voice)
 
@@ -169,33 +173,33 @@ if submit:
                 "정리해줘",
             }
 
+            # 음성 명령으로 이메일 전송
             if send_by_voice:
-                mail_text = st.session_state.get("mail_text", "").strip()
+                mail_text = st.session_state.get(
+                    "mail_text", ""
+                ).strip()
 
                 if not mail_text:
                     st.warning("먼저 회의록을 요약해주세요.")
 
                 else:
-                    # Streamlit Secrets에서 발신자 계정 정보 불러오기
-                    sender = st.secrets["EMAIL_ADDRESS"]
-                    password = st.secrets["EMAIL_APP_PASSWORD"]
-
-                    msg = MIMEText(mail_text, "plain", "utf-8")
-                    msg["Subject"] = "회의 요약 및 김 대리 담당 업무"
-                    msg["From"] = sender
-                    msg["To"] = RECEIVER
-
                     with st.spinner("이메일을 보내고 있습니다..."):
-                        with smtplib.SMTP_SSL(
-                            "smtp.gmail.com", 465, timeout=30
-                        ) as smtp:
-                            smtp.login(sender, password)
-                            smtp.send_message(msg)
+                        result = send_email(
+                            to=RECEIVER,
+                            subject="회의 요약 및 김 대리 담당 업무",
+                            body=mail_text,
+                        )
 
-                    st.success(f"{RECEIVER}으로 이메일을 보냈습니다.")
+                    if result["status"] == "success":
+                        st.success(
+                            f"{RECEIVER}으로 이메일을 보냈어요!"
+                        )
+                    else:
+                        st.error(
+                            f"이메일 전송 실패: {result['error']}"
+                        )
 
             elif not calendar_by_voice:
-                # 기존 meeting_text = (...)부터 이어서 유지
                 # 업로드한 회의록 읽기
                 meeting_text = (
                     uploaded_file.getvalue()
@@ -206,7 +210,9 @@ if submit:
                 )
 
                 if summarize and not meeting_text:
-                    st.warning("요약할 회의록 파일을 먼저 올려주세요.")
+                    st.warning(
+                        "요약할 회의록 파일을 먼저 올려주세요."
+                    )
 
                 else:
                     # 역할 설정
@@ -255,6 +261,7 @@ deadline은 null로 두세요. 추측하지 마세요.
 
 정확한 날짜가 있으면 deadline에 YYYY-MM-DD 문자열을 넣으세요.
 배정된 업무가 없으면 task와 evidence는 빈 문자열로 두세요.
+
 [요약문 작성 형식]
 - 마크다운 문법 없이 일반 텍스트로 작성하세요.
 - 긴 줄글로 작성하지 말고, 제목과 항목으로 나누세요.
@@ -366,28 +373,6 @@ if "mail_text" in st.session_state:
         key="mail_text",
         height=300,
     )
-
-RECEIVER = "chicvoice@gmail.com"
-
-if send_by_voice:
-    body = st.session_state.get("mail_text", "").strip()
-
-    if not body:
-        st.warning("먼저 회의록을 요약해주세요.")
-
-    else:
-        with st.spinner("이메일 전송 중..."):
-            result = send_email(
-                to=RECEIVER,
-                subject="회의 요약",
-                body=body,
-            )
-
-        if result["status"] == "success":
-            st.success("이메일을 보냈어요!")
-        else:
-            st.error(result["error"])
-                # 기존 회의록 요약 및 AI 답변 코드를 그대로 유지
 
 from hashlib import sha256
 
