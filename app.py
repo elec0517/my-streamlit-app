@@ -482,3 +482,44 @@ with st.expander("최근 대화 기록 · 최대 10턴"):
     for question, answer in st.session_state["history"]:
         st.chat_message("user").write(question)
         st.chat_message("assistant").write(answer)
+
+RECEIVER = "chicvoice@gmail.com"
+
+# 1번 셀에서 '이메일 보내줘'라고 인식했을 때 실행
+if send_by_voice:
+    body = st.session_state.get("mail_text", "").strip()
+    sender = os.getenv("RECEIVER")
+    password = os.getenv("GMAIL_APP_PASSWORD")
+
+    if not body:
+        reply = "먼저 회의록을 요약해달라고 말씀해주세요."
+
+    elif not sender or not password:
+        reply = "Gmail 주소와 앱 비밀번호 설정을 확인해주세요."
+
+    else:
+        try:
+            msg = MIMEText(body, "plain", "utf-8")
+            msg["Subject"] = "회의 요약 및 김 대리 담당 업무"
+            msg["From"] = sender
+            msg["To"] = RECEIVER
+
+            with st.spinner("이메일을 보내고 있어요..."):
+                with smtplib.SMTP("smtp.gmail.com", 587, timeout=30) as server:
+                    server.starttls()
+                    server.login(sender, password)
+                    server.send_message(msg)
+
+            reply = f"{RECEIVER}로 요약 메일을 보냈어요."
+
+        except smtplib.SMTPAuthenticationError:
+            reply = "Gmail 로그인에 실패했어요. 앱 비밀번호를 확인해주세요."
+
+        except Exception as e:
+            reply = (
+                f"메일 전송 결과를 확인하지 못했어요. ({type(e).__name__}) "
+                "다시 요청하기 전에 수신함을 확인해주세요."
+            )
+
+    st.info(reply)
+    remember(spoken, reply)
