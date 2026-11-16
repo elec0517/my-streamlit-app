@@ -191,9 +191,12 @@ question = st.chat_input(
 )
 
 if question:
-    # 최근 10번의 문답을 모델에 전달
+    # 현재 질문을 추가하기 전에 이전 대화 확보
     history = [
-        (message["role"], message["content"])
+        (
+            "human" if message["role"] == "user" else "ai",
+            message["content"]
+        )
         for message in st.session_state.messages[-10:]
     ]
 
@@ -221,10 +224,5 @@ if question:
             })
 
         except Exception:
-            # 실패한 질문은 기록에서 제거해 재시도 가능
             st.session_state.messages.pop()
-
-            st.error(
-                "답변 생성에 실패했습니다. "
-                "API 사용 한도와 연결 상태를 확인한 뒤 다시 질문해주세요."
-            )
+            st.error("답변 생성에 실패했습니다. 앱 로그를 확인해주세요.")
