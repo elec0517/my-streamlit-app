@@ -2,6 +2,7 @@ import hashlib
 import os
 import tempfile
 
+
 import streamlit as st
 from operator import itemgetter
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
@@ -190,6 +191,12 @@ question = st.chat_input(
 )
 
 if question:
+    # 최근 10번의 문답을 모델에 전달
+    history = [
+        (message["role"], message["content"])
+        for message in st.session_state.messages[-10:]
+    ]
+
     st.session_state.messages.append({
         "role": "user",
         "content": question
@@ -202,7 +209,8 @@ if question:
         try:
             with st.spinner("답변을 입력 중입니다…"):
                 answer = st.session_state.rag_chain.invoke({
-                    "input": question
+                    "input": question,
+                    "chat_history": history
                 })
 
             st.markdown(answer)
@@ -213,6 +221,9 @@ if question:
             })
 
         except Exception:
+            # 실패한 질문은 기록에서 제거해 재시도 가능
+            st.session_state.messages.pop()
+
             st.error(
                 "답변 생성에 실패했습니다. "
                 "API 사용 한도와 연결 상태를 확인한 뒤 다시 질문해주세요."
