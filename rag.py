@@ -2,7 +2,6 @@
 sources = [(표시 이름, PDF 바이트)], history = [{"role": ..., "text": ...}].
 cache는 현재 Streamlit 세션의 딕셔너리. 반환값은 (답변, 검색한 쪽 목록).
 """
-%%writefile rag.py
 import base64
 import hashlib
 import re
