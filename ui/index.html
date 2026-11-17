@@ -1,0 +1,15 @@
+<!doctype html><html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>AIVLE 학습 도우미</title>
+<style>
+*{box-sizing:border-box}body{font:16px/1.6 system-ui,sans-serif;margin:0;color:#243c37;background:#fffefa}button,a,input{font:inherit}button,a{cursor:pointer}button{border:1px solid #cbdad0;background:#fffefa;border-radius:12px;padding:8px 12px;color:inherit}button:hover{background:#e7f1e9}button:focus-visible,a:focus-visible,textarea:focus-visible{outline:3px solid #4d8264}#shell{display:flex;height:100vh}aside{width:245px;flex:none;background:#edf3ed;padding:16px;overflow:auto}main{display:flex;flex-direction:column;min-width:0;flex:1}header{padding:10px 16px;display:flex;gap:8px;align-items:center;border-bottom:1px solid #e5e9df}#body{overflow:auto;flex:1;padding:24px max(18px,calc((100% - 760px)/2))}#composer{width:min(760px,94%);margin:8px auto 16px;background:white;border:1px solid #b3cbb9;border-radius:22px;padding:10px;box-shadow:0 4px 16px #17382910}#composeRow,.row{display:flex;gap:6px;align-items:center}textarea{resize:vertical;min-height:42px;flex:1;min-width:0;border:none;padding:10px;font:inherit}.send{background:#254d40;color:white}.send:hover{background:#316550}.msg{white-space:pre-wrap;margin:18px 0;overflow-wrap:anywhere}.user{border-radius:17px;background:#e8f1e9;width:fit-content;margin-left:auto;padding:9px 15px}.bot{padding:4px 0}.choices{display:flex;gap:8px;flex-wrap:wrap}aside .row button:first-child{flex:1;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.selected{background:#dae9dd}small,summary{color:#586961}.row{margin:5px 0}h1{font-size:clamp(1.6rem,4vw,2.5rem);letter-spacing:-.06em;line-height:1.25}h2{font-size:1.1rem}#status{font-size:.9rem;color:#784520}.drag{outline:3px dashed #578762}a{color:#256550}.loading:before{content:'◌';display:inline-block;animation:spin 1s linear infinite;margin-right:8px}@keyframes spin{to{transform:rotate(360deg)}}@media(max-width:690px){aside{position:absolute;z-index:4;height:87vh;width:min(78vw,270px);box-shadow:4px 4px 18px #0002}#body{padding:16px}}
+</style>
+<div id="shell"><aside hidden></aside><main><header></header><section id="body"></section><form id="composer"><div id="files"></div><div id="composeRow"><textarea rows="1" aria-label="질문" placeholder="백서에 대해 질문해 보세요"></textarea><button class="send" aria-label="보내기">↑</button></div><div id="status" role="status"></div></form></main></div>
+<script src="core.js"></script>
+<script src="f1_layout.js"></script>
+<script src="f2_upload.js"></script>
+<script src="f3_questions.js"></script>
+<script src="f4_sidebar.js"></script>
+<script src="f5_cookie.js"></script>
+<script src="f6_logo.js"></script>
+<script src="f7_mentor.js"></script>
+<script src="f8_slash.js"></script>
+<script src="start.js"></script></html>
