@@ -1,5 +1,5 @@
 
-const defaultFaq = ["에이블스쿨에서는무엇을배우나요?", "DX 트랙의목표는무엇인가요?", "수업은어떻게진행되나요?", "개인노트북이필요한가요?", "어떤취업지원을받을수있나요?", "코딩경험이적으면어떻게따라가나요?", "수강전에무엇을준비하면좋나요?", "용어가낯설때는어떻게하나요?", "하루에얼마나복습하나요?", "막히면답안을봐도될까요?", "배운코딩을어디에활용하나요?", "오류는어떻게질문하나요?", "팀코드를합칠때무엇을준비하나요?", "결석하면장려금에어떤영향이있나요?", "조퇴나외출도결석이되나요?", "병원방문은출석으로인정되나요?", "아르바이트를하면받을수있나요?", "자영업자도대상인가요?", "특별훈련수당도받을수있나요?", "출석률과수당은어떻게계산하나요?", "이전기수와금액이다른이유는무엇인가요?"];
+
 const pdfFaqCache = new WeakMap();
 let previousFaqView = null;
 
@@ -119,47 +119,52 @@ async function readUploadedFaq(file) {
   }
 }
 
-// ③ 추천 질문 버튼 표시
+// ③ 현재 대화에 PDF가 있을 때만 추천 질문 표시
 hooks.questions = (body, c) => {
-  if (c?.mode === "mentor") return;
+  const attached = [...(c?.docs ?? []), ...staged];
+
+  // 첫 화면이나 첨부를 취소한 상태에서는 추천 질문을 숨긴다.
+  if (attached.length === 0) {
+    previousFaqView = null;
+    return;
+  }
+
+  // 이미 대화 중이면 새 PDF를 첨부했을 때만 추천을 다시 보여준다.
   if (c?.messages.length && staged.length === 0) return;
 
   const chatId = c?.id ?? "home";
-  const attached = [...(c?.docs ?? []), ...staged];
   const group = el("div", null, "choices");
   body.append(group);
 
-  // 화면만 다시 그려졌을 때는 기존 두 질문을 유지
   const sameView = previousFaqView
     && previousFaqView.chatId === chatId
     && previousFaqView.files.length === attached.length
     && previousFaqView.files.every((file, i) => file === attached[i]);
 
   if (!sameView) {
-    const selection = attached.length
-      ? Promise.all(attached.map(readUploadedFaq))
-          .then(lists => pickTwoQuestions(lists.flat()))
-      : Promise.resolve(pickTwoQuestions(defaultFaq));
+    const selection = Promise.all(attached.map(readUploadedFaq))
+      .then(lists => pickTwoQuestions(lists.flat()));
 
     previousFaqView = {chatId, files: attached, selection};
   }
 
-  group.textContent = attached.length ? "첨부한 PDF에서 추천 질문을 찾고 있어요…" : "";
+  group.textContent = "첨부한 PDF에서 추천 질문을 찾고 있어요…";
 
   previousFaqView.selection.then(picked => {
     if (!group.isConnected) return;
     group.replaceChildren();
 
-    if (!picked.length) {
-      group.append(el("small", "이 PDF에서 FAQ를 찾지 못했어요. 궁금한 내용을 직접 입력해 주세요."));
+    if (picked.length === 0) {
+      group.append(el("small", "추천 질문을 찾지 못했어요. 궁금한 내용을 직접 입력해 주세요."));
       return;
     }
+
     for (const question of picked) {
       group.append(button(question, () => submit(question)));
     }
   }).catch(() => {
     if (group.isConnected) {
-      group.textContent = "첨부 PDF의 추천 질문을 읽지 못했어요. 질문은 직접 입력할 수 있어요.";
+      group.textContent = "PDF를 읽지 못했어요. 텍스트를 선택할 수 있는 PDF인지 확인해 주세요.";
     }
   });
 };
