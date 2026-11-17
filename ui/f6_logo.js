@@ -1,3 +1,4 @@
+
 // ⑥ AIVLE 로고를 누르면 홈으로 이동
 hooks.logo = bar => {
   const logoButton = button("", home, "AIVLE 홈으로");
