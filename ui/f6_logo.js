@@ -1,2 +1,13 @@
-// ⑥ 로고는 대화를 보존하고 첫 화면으로 이동한다.
-hooks.logo=bar=>{const b=button("◈  AIVLE",home,"AIVLE 홈으로");b.style.cssText="font-weight:800;letter-spacing:.08em;border:0;background:transparent";bar.append(b)};
+// ⑥ AIVLE 로고를 누르면 홈으로 이동
+hooks.logo = bar => {
+  const logoButton = button("", home, "AIVLE 홈으로");
+
+  const logo = new Image();
+  logo.src = "./logo.png";
+  logo.alt = "AIVLE";
+  logo.style.cssText = "display:block; width:132px; max-width:32vw; height:auto;";
+
+  logoButton.style.cssText = "padding:2px 6px; border:0; background:transparent;";
+  logoButton.append(logo);
+  bar.append(logoButton);
+};
