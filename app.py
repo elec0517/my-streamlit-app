@@ -16,7 +16,7 @@ if req and req.get("id") != (st.session_state.get("result") or {}).get("id"):
         key = os.environ.get("OPENAI_API_KEY") or st.secrets.get("OPENAI_API_KEY")
         if not key:
             raise ValueError("Streamlit Secrets에 OPENAI_API_KEY를 설정해 주세요.")
-                if not req.get("files"):
+        if not req.get("files"):
             raise ValueError("먼저 채팅창의 ＋ 버튼으로 백서 PDF를 첨부해 주세요.")
 
         sources = []
